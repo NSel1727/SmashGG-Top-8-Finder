@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<style>
+    .center{
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        width: 50%;
+        height: 50%;
+    }
+</style>
+<head>
+<title>Smash Top 8 Finder</title>
+</head>
+
+<body>
+    <h1 style="text-align:center;">Top 8 Finder</h1>
+    <label for="tourney">Tournament:</label>
+    <input type = "text" id = "tourney" name = "tourney">
+    <br><br>
+    <button id="melee" onclick="startMelee()" style="float:left; margin-left: 100px; margin-right: 10px">Melee</button>
+    <button id="ult" onclick="startUlt()">Ultimate</button>
+    <br>
+    <h2 id="results" style="text-align:center"></h2>
+    <img id="pic" src="" class="center">
+    <script id = "code">
+
+        let html;
+        let link;
+        let tourney;
+
+        let stop = false;
+        let gameFlag;
+
+        function startMelee(){
+            if(stop)
+                return;
+
+            stop = true;
+
+            gameFlag = 0;
+            createLink();
+
+            // Ensures that a request will finish before moving onto another request 
+            setTimeout(function(){
+                stop = false;
+            }, 3000);
+        }
+
+        function startUlt(){
+            if(stop)
+                return;
+
+            stop = true;
+
+            gameFlag = 1;
+            createLink();
+
+            // Ensures that a request will finish before moving onto another request 
+            setTimeout(function(){
+                stop = false;
+            }, 3000);
+        }
+        
+        function createLink(){
+            if(document.getElementById("tourney").value.length === 0)
+                return;
+
+            tourney = document.getElementById("tourney").value;
+            link = document.createElement("script");
+            link.src = "https://www.googleapis.com/customsearch/v1?key=AIzaSyD8Aku1fVsiEObQqpLeIPykNqvY4vys2Vk&cx=9dd682e89dcb9e52e&q=Smashgg" + tourney + "&callback=hndlr";
+
+            //Calls the handler method using the link
+            document.getElementById("code").appendChild(link);
+        }
+
+        function hndlr(response) {
+            let link = response.items[0].link;
+
+            link = link.replace('/events', '');
+            link = link.replace('/overview', '');
+
+            fetch(link).then((response) => response.text())
+            .then((text) => html = text).then(function(){
+                let event = getEvent(html);
+
+                if(event === undefined)
+                    return;
+
+                let tmp = html.substring(html.indexOf('https://images.smash.gg/images/'));
+
+                pic.src = tmp.substring(0, tmp.indexOf('cover') + 5);
+
+                let final = 'https://smash.gg' + event + '/standings';
+                getResults(final);
+            }).catch(e => {
+                console.log(e.message);
+            });
+        }
+
+        function getEvent(html){
+            let lnk;
+            for(let i = 0; i < 100; i++){
+                html = html.substring(html.indexOf('colorPrimary" href='));
+                lnk = html.substring(html.indexOf("href=") + 5, html.indexOf("tab"));
+
+                //Ensures that the next iteration of the loop gets a new link
+                html = html.substring(5);
+
+                if(!lnk.includes("event"))
+                    continue;
+
+                let temp = lnk.substring(lnk.indexOf("event")).toLowerCase();
+
+                if(gameFlag === 1){
+                    if(temp.includes('ult') && !temp.includes('doubles') &&
+                       !temp.includes('squad') && !temp.includes('side') && !temp.includes('tier') && !temp.includes('2v2'))
+                            return lnk.substring(1, lnk.length - 2);  
+                }else{
+                    if(temp.includes('melee') && !temp.includes('doubles') && !temp.includes('side') && 
+                       !temp.includes('tier') && !temp.includes('2v2'))
+                        return lnk.substring(1, lnk.length - 2);  
+                }
+            }
+            return undefined;
+        }
+
+        function getResults(finalLink){            
+            fetch(finalLink).then((response) => response.text())
+            .then((text) => html = text).then(function(){
+                document.getElementById('results').innerHTML = "";
+
+                for(let i = 1; i <= 8; i++){
+                    html = html.substring(html.indexOf('data-test="gamertag"') + 21);
+                    
+                    let placement = i;
+                    if(placement === 6 || placement === 8)
+                        placement--;
+                        
+                    document.getElementById('results').innerHTML += placement + ". " + html.substring(0, html.indexOf("<")) + "<br>";
+            }
+            }).catch(e => {
+                console.log(e.message);
+            });
+        }
+
+    </script>
+</body>
+
+</html>
